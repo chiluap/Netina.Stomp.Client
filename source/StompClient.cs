@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Net.WebSockets;
 using Netina.Stomp.Client.Interfaces;
 using Netina.Stomp.Client.Messages;
 using Netina.Stomp.Client.Utils;
-using Newtonsoft.Json;
 using Websocket.Client;
 using Websocket.Client.Models;
 
@@ -104,7 +104,7 @@ namespace Netina.Stomp.Client
 
         public async Task SendAsync(object body, string destination, IDictionary<string, string> headers)
         {
-            var jsonPayload = JsonConvert.SerializeObject(body);
+            var jsonPayload = JsonSerializer.Serialize(body);
             headers.Add("content-type", "application/json;charset=UTF-8");
             headers.Add("content-length", Encoding.UTF8.GetByteCount(jsonPayload).ToString());
             await SendAsync(jsonPayload, destination, headers);
@@ -122,7 +122,7 @@ namespace Netina.Stomp.Client
 
         public async Task SubscribeAsync<T>(string topic, IDictionary<string, string> headers, EventHandler<T> handler)
         {
-            await SubscribeAsync(topic, headers, (sender, message) => handler(this, JsonConvert.DeserializeObject<T>(message.Body)));
+            await SubscribeAsync(topic, headers, (sender, message) => handler(this, JsonSerializer.Deserialize<T>(message.Body)));
         }
 
         public async Task SubscribeAsync(string topic, IDictionary<string, string> headers, EventHandler<StompMessage> handler)
@@ -157,6 +157,12 @@ namespace Netina.Stomp.Client
         }
 
         public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
         {
             StompState = StompConnectionState.Closed;
             ((IDisposable)_socket).Dispose();
